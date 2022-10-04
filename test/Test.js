@@ -263,6 +263,112 @@ describe("Individual List Limit Test Cases", function () {
         .preSaleMint(1, { value: ethers.utils.parseEther("0.001").toString() })
     ).to.be.revertedWith("Max lmit of tokens exceeded");
   });
+  // ---------------------------------------- limited-----------------
+  it("Donot Excede the free per wallet limit of pre sale limited", async function () {
+    const acc = await ethers.getSigners();
+    const publicAccount = [];
+    const publicAccountAddress = [];
+    const [addr1] = await ethers.getSigners();
+    for (let i = 0; i < 1; i++) {
+      let wallet = ethers.Wallet.createRandom();
+      // add the provider from Hardhat
+      wallet = wallet.connect(ethers.provider);
+      await addr1.sendTransaction({
+        to: wallet.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      publicAccount.push(wallet);
+      publicAccountAddress.push(wallet.address);
+    }
+
+    const TestContract = await ethers.getContractFactory("NFTA");
+    const contract = await TestContract.deploy(
+      "a",
+      "A",
+      "B",
+      "C",
+      publicAccountAddress,
+      []
+    );
+
+    for (let i = 0; i < 1; i++) {
+      await contract.connect(publicAccount[i]).preSaleMintLimited(1);
+    }
+    expect(await contract.balanceOf(publicAccount[0].address)).to.equal(1);
+    console.log();
+  });
+
+ 
+  it("Excede the free per wallet limit of pre sale with 0 ether limited", async function () {
+    const acc = await ethers.getSigners();
+    const publicAccount = [];
+    const publicAccountAddress = [];
+    const [addr1] = await ethers.getSigners();
+    for (let i = 0; i < 1; i++) {
+      let wallet = ethers.Wallet.createRandom();
+      // add the provider from Hardhat
+      wallet = wallet.connect(ethers.provider);
+      await addr1.sendTransaction({
+        to: wallet.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      publicAccount.push(wallet);
+      publicAccountAddress.push(wallet.address);
+    }
+
+    const TestContract = await ethers.getContractFactory("NFTA");
+    const contract = await TestContract.deploy(
+      "a",
+      "A",
+      "B",
+      "C",
+      publicAccountAddress,
+      []
+    );
+
+    for (let i = 0; i < 1; i++) {
+      await contract.connect(publicAccount[i]).preSaleMintLimited(1);
+    }
+    await expect(
+      contract.connect(publicAccount[0]).preSaleMintLimited(1)
+    ).to.be.revertedWith("Insuffiecient funds transfered");
+
+    console.log();
+  });
+
+   it("Excede the total per wallet limit of pre sale limit limited", async function () {
+    const acc = await ethers.getSigners();
+    const publicAccount = [];
+    const publicAccountAddress = [];
+    const [addr1] = await ethers.getSigners();
+    for (let i = 0; i < 1; i++) {
+      let wallet = ethers.Wallet.createRandom();
+      // add the provider from Hardhat
+      wallet = wallet.connect(ethers.provider);
+      await addr1.sendTransaction({
+        to: wallet.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      publicAccount.push(wallet);
+      publicAccountAddress.push(wallet.address);
+    }
+
+    const TestContract = await ethers.getContractFactory("NFTA");
+    const contract = await TestContract.deploy(
+      "a",
+      "A",
+      "B",
+      "C",
+      publicAccountAddress,
+      []
+    );
+
+    for (let i = 0; i < 1; i++) {
+      await contract.connect(publicAccount[i]).preSaleMintLimited(6);
+    }
+    expect(await contract.balanceOf(publicAccount[0].address)).to.be.revertedWith("Max lmit of tokens exceeded for Whitelists");
+  });
+ 
 
   //     const acc = await ethers.getSigners();
   //     const whiteListAccounts = [];
@@ -394,7 +500,7 @@ describe("Overall Limit Test Cases", function () {
     const whiteListAccounts = [];
     const whiteListAccountsAddr = [];
     const [addr1] = await ethers.getSigners();
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 20; i++) {
       let wallet = ethers.Wallet.createRandom();
       // add the provider from Hardhat
       wallet = wallet.connect(ethers.provider);
@@ -416,10 +522,10 @@ describe("Overall Limit Test Cases", function () {
       []
     );
 
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 20; i++) {
       await contract.connect(whiteListAccounts[i]).preSaleMint(2);
     }
-    expect(await contract.whitelistFreeMinted()).to.equal(500);
+    expect(await contract.whitelistOFreeMinted()).to.equal(40);
     console.log();
   });
 
@@ -428,7 +534,7 @@ describe("Overall Limit Test Cases", function () {
     const whiteListAccounts = [];
     const whiteListAccountsAddr = [];
     const [addr1] = await ethers.getSigners();
-    for (let i = 0; i < 251; i++) {
+    for (let i = 0; i < 21; i++) {
       let wallet = ethers.Wallet.createRandom();
       // add the provider from Hardhat
       wallet = wallet.connect(ethers.provider);
@@ -450,10 +556,78 @@ describe("Overall Limit Test Cases", function () {
       []
     );
 
-    for (let i = 0; i < 251; i++) {
+    for (let i = 0; i < 21; i++) {
       await contract.connect(whiteListAccounts[i]).preSaleMint(2);
     }
-    expect(await contract.whitelistFreeMinted()).to.throw(new Error());
+    expect(await contract.whitelistOFreeMinted()).to.throw(new Error());
+    console.log();
+  });
+  // --------------------------
+  it("Donot Excede the limit of whitelist sale limited", async function () {
+    const acc = await ethers.getSigners();
+    const whiteListAccounts = [];
+    const whiteListAccountsAddr = [];
+    const [addr1] = await ethers.getSigners();
+    for (let i = 0; i < 10; i++) {
+      let wallet = ethers.Wallet.createRandom();
+      // add the provider from Hardhat
+      wallet = wallet.connect(ethers.provider);
+      await addr1.sendTransaction({
+        to: wallet.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      whiteListAccounts.push(wallet);
+      whiteListAccountsAddr.push(wallet.address);
+    }
+
+    const TestContract = await ethers.getContractFactory("NFTA");
+    const contract = await TestContract.deploy(
+      "a",
+      "A",
+      "B",
+      "C",
+      whiteListAccountsAddr,
+      []
+    );
+
+    for (let i = 0; i < 10; i++) {
+      await contract.connect(whiteListAccounts[i]).preSaleMintLimited(1);
+    }
+    expect(await contract.whitelistLFreeMinted()).to.equal(10);
+    console.log();
+  });
+
+  it("Excede the limit of whitelist sale limited", async function () {
+    const acc = await ethers.getSigners();
+    const whiteListAccounts = [];
+    const whiteListAccountsAddr = [];
+    const [addr1] = await ethers.getSigners();
+    for (let i = 0; i < 11; i++) {
+      let wallet = ethers.Wallet.createRandom();
+      // add the provider from Hardhat
+      wallet = wallet.connect(ethers.provider);
+      await addr1.sendTransaction({
+        to: wallet.address,
+        value: ethers.utils.parseEther("1"),
+      });
+      whiteListAccounts.push(wallet);
+      whiteListAccountsAddr.push(wallet.address);
+    }
+
+    const TestContract = await ethers.getContractFactory("NFTA");
+    const contract = await TestContract.deploy(
+      "a",
+      "A",
+      "B",
+      "C",
+      whiteListAccountsAddr,
+      []
+    );
+
+    for (let i = 0; i < 11; i++) {
+      await contract.connect(whiteListAccounts[i]).preSaleMint(1);
+    }
+    expect(await contract.whitelistLFreeMinted()).to.throw(new Error());
     console.log();
   });
 });

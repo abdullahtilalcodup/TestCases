@@ -2,23 +2,25 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
-import "../node_modules/@openzeppelin/contracts/utils/Strings.sol";
-import "./ERC721A.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "erc721a/contracts/ERC721A.sol";
 
 /// @title Mestro's Mix Test
 /// @author Adam Bawany
 /// @custom:experimental This is an experimental contract.
-contract NFTA is ERC721A, Ownable {
+contract MM is ERC721A, Ownable {
 
     using Strings for uint256;
     
     bool public paused = false;
     bool public revealed = false;
     bool public onlyWhiteListed = true;
+    bool public onlyWhiteListedOG = true;
+    bool public onlyWhiteList = true;
     bool public publicSale = true;//only specified here.Implemented if needed in future
     
-    uint8 public maxMintAmount = 5; //Max Limit per Wallet
+    uint8 public maxMintAmount = 10; //Max Limit per Wallet
     uint8 public nftPerAddressLimitFreeO =2; //Max Free mint for WL
     uint8 public nftPerAddressLimitO =5; //Max Limit per Wallet for WL
     uint8 public nftPerAddressLimitFreeL =1; //Max Free mint for WL
@@ -27,13 +29,17 @@ contract NFTA is ERC721A, Ownable {
     uint8 public nftPerAddressLimitPublic =5; //Max Limit per Wallet for Public
     
     uint256 public cost = 0.001 ether;
-    uint256 public maxSupply = 1920;
+    uint256 public maxSupply = 70;
     uint256 public publicFreeMinted=0;//1000
     uint256 public whitelistFreeMinted=0;//500
-    uint256 public publicFreeLimit=1000;
-    uint256 public whitelistFreeLimit=500;
+    uint256 public whitelistOFreeMinted=0;
+    uint256 public whitelistLFreeMinted=0;
+    uint256 public publicFreeLimit=20;
+    uint256 public whitelistFreeLimit=30;
+    uint256 public whitelistOLimit=20;
+    uint256 public whitelistLLimit=10;
     uint256 public paidMinted=0;
-    uint256 public paidMintedLimit=420;
+    uint256 public paidMintedLimit=20;
 
     string public baseURI;
     string public baseExtension = ".json";
@@ -76,12 +82,17 @@ contract NFTA is ERC721A, Ownable {
         uint8 _mintAmount,
         uint256 senderAmount,
         uint256 freeMintAvailable,
-        bool isWhitelist
+        uint8 isWhitelist
     ) private {
          if (_mintAmount <= freeMintAvailable) {
 
-             if(isWhitelist){
+             if(isWhitelist==1){
                 whitelistFreeMinted=whitelistFreeMinted+_mintAmount;
+                whitelistOFreeMinted=whitelistOFreeMinted+_mintAmount;
+             }
+             else if(isWhitelist==2){
+                 whitelistFreeMinted=whitelistFreeMinted+_mintAmount;
+                 whitelistLFreeMinted=whitelistLFreeMinted+_mintAmount;
              }
              else{
                  publicFreeMinted=publicFreeMinted+_mintAmount;
@@ -94,8 +105,13 @@ contract NFTA is ERC721A, Ownable {
         } else {
 
            
-            if(isWhitelist){
+            if(isWhitelist==1){
                 whitelistFreeMinted=whitelistFreeMinted+freeMintAvailable;
+                 whitelistOFreeMinted=whitelistOFreeMinted+freeMintAvailable;
+            }
+            else if(isWhitelist==2){
+                whitelistFreeMinted=whitelistFreeMinted+freeMintAvailable;
+                whitelistLFreeMinted=whitelistLFreeMinted+freeMintAvailable;
             }
              else{
                  publicFreeMinted=publicFreeMinted+freeMintAvailable;
@@ -115,7 +131,7 @@ contract NFTA is ERC721A, Ownable {
     ///@dev It is used to calculate the number of free token available for the specific address.It is used as we have different number of free mints for different whitelisting and public sale.
     ///@param maxFreeMintAmount is the maximum amount of tokens available to mint free.
     ///@return it returns the number of free tokens available to mint,in type uint256, for the senders address.
-    function getFreeMintAvailableAmount(uint256 maxFreeMintAmount,bool isWhitelist)
+    function getFreeMintAvailableAmount(uint256 maxFreeMintAmount,uint8 isWhitelist)
         private
         view
         returns (uint256)
@@ -123,17 +139,27 @@ contract NFTA is ERC721A, Ownable {
         uint256 currentMintAmount = mintedList[msg.sender];
         if (maxFreeMintAmount > currentMintAmount) {
             uint256 freeMintAvailable=maxFreeMintAmount - currentMintAmount;
-            if((isWhitelist&&whitelistFreeMinted<whitelistFreeLimit)){
+            if((isWhitelist==1&&whitelistOFreeMinted<whitelistOLimit)){
                 
-                if(freeMintAvailable<whitelistFreeLimit-whitelistFreeMinted){
+                if(freeMintAvailable<whitelistOLimit-whitelistOFreeMinted){
                     return freeMintAvailable;
                 }
                 else{
-                    return(whitelistFreeLimit-whitelistFreeMinted);
+                    return(whitelistOLimit-whitelistOFreeMinted);
                 }
                     
             }
-            else if((!isWhitelist&&publicFreeMinted<publicFreeLimit)){
+            else if((isWhitelist==2&&whitelistLFreeMinted<whitelistLLimit)){
+                
+                if(freeMintAvailable<whitelistLLimit-whitelistLFreeMinted){
+                    return freeMintAvailable;
+                }
+                else{
+                    return(whitelistLLimit-whitelistLFreeMinted);
+                }
+                    
+            }
+            else if((isWhitelist==0&&publicFreeMinted<publicFreeLimit)){
 
                 if(freeMintAvailable<publicFreeLimit-publicFreeMinted){
                     return freeMintAvailable;
@@ -157,7 +183,8 @@ contract NFTA is ERC721A, Ownable {
     function preSaleMint(uint8 _mintAmount) preConditions(_mintAmount) public payable {
        
         require(onlyWhiteListed,"Pre sale is not active currently");
-       
+        require(onlyWhiteListedOG,"Pre sale OG is not active currently");
+
         uint256 ownerTokenCount = mintedList[msg.sender];
         require(_mintAmount+ownerTokenCount<= nftPerAddressLimitO,"Max lmit of tokens exceeded for Whitelists");
 
@@ -165,10 +192,10 @@ contract NFTA is ERC721A, Ownable {
         if (isWhiteListedO(msg.sender)) {
             require(ownerTokenCount < nftPerAddressLimitO,"Max lmit of tokens exceeded for OG list");
             uint256 freeMintAvailable = getFreeMintAvailableAmount(
-                nftPerAddressLimitFreeO,true
+                nftPerAddressLimitFreeO,1
             );
             // require(freeMintAvailable+whitelistFreeMinted<=500,"White list free mint are over");
-            mint(_mintAmount,msg.value,freeMintAvailable,true);
+            mint(_mintAmount,msg.value,freeMintAvailable,1);
            
         }
 }
@@ -179,7 +206,8 @@ contract NFTA is ERC721A, Ownable {
     function preSaleMintLimited(uint8 _mintAmount) preConditions(_mintAmount) public payable {
        
         require(onlyWhiteListed,"Pre sale is not active currently");
-       
+        require(onlyWhiteList,"Pre sale WL is not active currently");
+
         uint256 ownerTokenCount = mintedList[msg.sender];
         require(_mintAmount+ownerTokenCount<= nftPerAddressLimitL,"Max lmit of tokens exceeded for Whitelists");
 
@@ -187,10 +215,10 @@ contract NFTA is ERC721A, Ownable {
         if (isWhiteListedL(msg.sender)) {
             require(ownerTokenCount < nftPerAddressLimitL,"Max lmit of tokens exceeded for OG list");
             uint256 freeMintAvailable = getFreeMintAvailableAmount(
-                nftPerAddressLimitFreeL,true
+                nftPerAddressLimitFreeL,2
             );
             // require(freeMintAvailable+whitelistFreeMinted<=500,"White list free mint are over");
-            mint(_mintAmount,msg.value,freeMintAvailable,true);
+            mint(_mintAmount,msg.value,freeMintAvailable,2);
            
         }
 }
@@ -206,12 +234,12 @@ contract NFTA is ERC721A, Ownable {
         require(_mintAmount+ownerTokenCount <= nftPerAddressLimitPublic,"Max lmit of tokens exceeded for public sale");
 
         uint256 freeMintAvailable = getFreeMintAvailableAmount(
-            nftPerAddressLimitFreePublic,false
+            nftPerAddressLimitFreePublic,0
         );
 
         // require(freeMintAvailable+publicFreeMinted<=1000,"Public free mint is over free");
 
-         mint( _mintAmount,msg.value,freeMintAvailable,false);
+         mint( _mintAmount,msg.value,freeMintAvailable,0);
     }
 
     function mintOwner(uint256 _mintAmount) public onlyOwner {
